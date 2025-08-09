@@ -1,0 +1,1 @@
+"""Core models scaffolding (to be implemented in Phase 1)."""

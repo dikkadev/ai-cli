@@ -1,0 +1,17 @@
+[project]
+name = "ai-cli"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "dikkadev", email = "raik@dikka.dev" }
+]
+requires-python = ">=3.13"
+dependencies = []
+
+[project.scripts]
+ai = "ai_cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

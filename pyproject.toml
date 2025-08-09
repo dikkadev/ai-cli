@@ -7,7 +7,11 @@ authors = [
     { name = "dikkadev", email = "raik@dikka.dev" }
 ]
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.11.7",
+    "rich>=14.1.0",
+    "typer>=0.16.0",
+]
 
 [project.scripts]
 ai = "ai_cli:main"

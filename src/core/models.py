@@ -17,15 +17,13 @@ class SourceRef(BaseModel):
 class UsecaseInput(BaseModel):
     """Base class for use case inputs."""
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 class UsecaseOutput(BaseModel):
     """Base class for use case outputs."""
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = {"arbitrary_types_allowed": True}
 
 
 JsonFormat = Literal["pretty", "json", "yaml"]  # placeholder for later use

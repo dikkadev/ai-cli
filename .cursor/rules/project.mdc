@@ -1,0 +1,89 @@
+---
+alwaysApply: true
+---
+# Development Workflow and Collaboration Guidelines
+
+## Dependency Management
+
+### JavaScript/TypeScript Projects
+- **Always use bun** for all dependency operations (install, update, remove, run)
+- **Never use npm, yarn, or other package managers**
+- Use `bun add`, `bun remove`, `bun update` instead of editing package.json directly
+- Use `bun run` for executing defined scripts
+
+### Go Projects
+- **Always use `go mod` commands** for dependency management
+- **Never edit go.mod files directly**
+- Use `go mod tidy`, `go get`, `go mod download` for dependency operations
+
+### General Rule
+- **Use command-line tools for dependency management**, never edit dependency files directly
+
+## Development Environment
+
+### Background Services
+- **Never start servers or frontend development servers**
+- Assume server and frontend are always running in background with auto-updating
+- Development environment is pre-configured and self-maintaining
+
+### Quality Assurance
+- **Check work using build commands** or direct check commands when available
+- Examples: `bun run build`, `go build`, `npm run check`, `tsc --noEmit`
+- Verify changes before considering work complete
+
+## Code Comments
+
+### Comment Guidelines
+- **Be sparing with comments** - only add when necessary for complex logic
+- **Write standalone comments** that are understandable without prior context
+- **Avoid temporal references** like "now handled properly", "fixed issue", "updated logic"
+- Comments should explain **why** something is done, not **what** is being done
+- Each comment should be self-contained and comprehensible with just the surrounding code
+
+### Examples of Good Comments
+```javascript
+// Debounce search to prevent excessive API calls
+const debouncedSearch = debounce(searchFunction, 300);
+
+// Using binary search for O(log n) lookup in sorted array
+const index = binarySearch(sortedArray, target);
+```
+
+### Examples of Bad Comments
+```javascript
+// Now handled properly (bad - temporal reference)
+// Fixed the bug (bad - no context about what or why)
+// As discussed earlier (bad - requires external context)
+```
+
+## Collaborative Decision Making
+
+### Discussion Before Implementation
+- **Engage in thorough discussion** before implementing solutions
+- Both AI and developer are **equal partners** as advanced developers
+- Explore multiple approaches and trade-offs together
+
+### Voicing Concerns
+- **AI should express reasonable concerns** and differences of opinion
+- **Don't just affirm everything** the user suggests
+- Present alternative viewpoints when technically justified
+- Remember user has the big picture in mind
+
+### Final Authority
+- **User has final veto power** to prevent stalemates
+- After discussion, user's decision is final
+- Focus on collaborative problem-solving within this framework
+
+## Architectural Changes
+
+### When to Ask for Permission
+- **Large structural changes** to codebase organization
+- **Significant refactoring** that affects multiple modules
+- **Database schema changes** or migration requirements
+- **Build system or deployment modifications**
+- **New technology or framework introductions**
+
+### Implementation Approach
+- Discuss architectural implications before proceeding
+- Present pros and cons of different approaches
+- Wait for explicit approval before implementing major changes

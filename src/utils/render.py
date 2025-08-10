@@ -59,6 +59,38 @@ class Renderer:
     def render_text_block(self, content: str) -> None:
         self.console.print(content)
 
+    def render_plan(self, plan: list, risks: list[str], assumptions: list[str], next_actions: list[str]) -> None:
+        """Render a structured task plan with numbered steps."""
+        # Steps
+        if plan:
+            self.console.print("\n[bold cyan]Plan:[/bold cyan]")
+            for i, step in enumerate(plan, 1):
+                risk_color = {"low": "green", "medium": "yellow", "high": "red"}.get(step.risk_level, "white")
+                risk_badge = f"[{risk_color}]{step.risk_level.upper()}[/{risk_color}]"
+                
+                self.console.print(f"\n[bold]{i}. {step.title}[/bold] {risk_badge}")
+                self.console.print(f"   {step.description}")
+                if hasattr(step, 'rationale') and step.rationale:
+                    self.console.print(f"   [dim]→ {step.rationale}[/dim]")
+        
+        # Risks
+        if risks:
+            self.console.print("\n[bold yellow]Risks:[/bold yellow]")
+            for risk in risks:
+                self.console.print(f"  • {risk}")
+        
+        # Assumptions
+        if assumptions:
+            self.console.print("\n[bold magenta]Assumptions:[/bold magenta]")
+            for assumption in assumptions:
+                self.console.print(f"  • {assumption}")
+        
+        # Next actions
+        if next_actions:
+            self.console.print("\n[bold green]Next Actions:[/bold green]")
+            for action in next_actions:
+                self.console.print(f"  • {action}")
+
 
 class Stopwatch:
     def __enter__(self):

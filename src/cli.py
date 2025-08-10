@@ -11,8 +11,13 @@ from utils.render import Renderer, RunMeta, Stopwatch
 from usecases.ask import Ask, AskInput
 from usecases.task import Task, TaskInput
 from usecases.testwrite import TestWrite, TestWriteInput
+from utils.fs import create_file_writer
 
 app = typer.Typer(add_completion=False, help="ai CLI")
+
+# Global options
+WriteOption = typer.Option(False, "--write", help="Allow file writes (requires use case capability)")
+ForceOption = typer.Option(False, "--force", help="Skip confirmation prompts")
 
 
 @app.command()
@@ -134,19 +139,30 @@ def testwrite(
     placement: str = typer.Option("new_file", help="Test placement: new_file, inline"),
     use_context: bool = typer.Option(True, "--context/--no-context", help="Include target and related files as context"),
     context_paths: list[str] = typer.Option([], "--path", help="Additional paths to include as context"),
+    write: bool = WriteOption,
+    force: bool = ForceOption,
 ) -> None:
-    """Generate test files for code (shows proposed changes only)."""
+    """Generate test files for code (optionally write them with --write flag)."""
     console = Console()
     renderer = Renderer(console)
     project_root = Path.cwd()
     
-    # Note: This is LIMITED sandbox but no writes in Phase 3
+    # Create sandbox with write consent
+    sandbox_policy = SandboxPolicy(
+        mode=SandboxMode.LIMITED,
+        project_root=project_root,
+        allows_writes=True,  # TestWrite declares this capability
+        user_write_consent=write,
+    )
+    sandbox_guard = SandboxGuard(sandbox_policy)
+    
     with Stopwatch() as sw:
         # Render header
+        sandbox_badge = "LIMITED SANDBOX" + (" + WRITES" if write else " (READ-ONLY)")
         renderer.render_header(
             RunMeta(
                 usecase="testwrite",
-                sandbox_badge="LIMITED SANDBOX (NO WRITES)",
+                sandbox_badge=sandbox_badge,
                 model_name="gpt-4o-mini",
             )
         )
@@ -180,8 +196,36 @@ def testwrite(
             if result.sources:
                 console.print(f"\n[dim]Sources: {len(result.sources)} files[/dim]")
             
-            # Phase 3: No actual writes
-            console.print(f"\n[dim]Note: Files not written (use --write in Phase 4)[/dim]")
+            # Handle file writing if requested
+            if write and result.proposed_files:
+                file_writer = create_file_writer(sandbox_guard)
+                
+                # Add all proposed operations
+                for proposed_file in result.proposed_files:
+                    file_path = project_root / proposed_file.path
+                    file_writer.add_operation(file_path, proposed_file.content, proposed_file.action)
+                
+                # Confirm before writing (unless --force)
+                if not force:
+                    console.print(f"\n[yellow]About to write {len(result.proposed_files)} files. Continue? [y/N][/yellow]", end=" ")
+                    import sys
+                    response = input().strip().lower()
+                    if response not in ["y", "yes"]:
+                        console.print("[dim]Cancelled.[/dim]")
+                        return
+                
+                # Execute file operations
+                changes = file_writer.execute_operations(dry_run=False)
+                
+                console.print(f"\n[bold green]File Operations:[/bold green]")
+                for change in changes:
+                    if "Failed" in change:
+                        console.print(f"  [red]{change}[/red]")
+                    else:
+                        console.print(f"  [green]{change}[/green]")
+            
+            elif not write:
+                console.print(f"\n[dim]Note: Files not written (use --write to enable)[/dim]")
         
         except Exception as e:
             console.print(f"[red]Error: {e}[/red]")
@@ -189,7 +233,7 @@ def testwrite(
 
 
 @app.callback(invoke_without_command=True)
-def main(ctx: typer.Context) -> None:
+def main_callback(ctx: typer.Context) -> None:
     if ctx.invoked_subcommand is None:
         console = Console()
         renderer = Renderer(console)
@@ -201,6 +245,11 @@ def main(ctx: typer.Context) -> None:
             )
         )
         console.print("Available commands: ask, task, testwrite")
+
+
+def main() -> None:
+    """Entry point for console script."""
+    app()
 
 
 if __name__ == "__main__":

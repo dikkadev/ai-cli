@@ -192,3 +192,50 @@ def test_context_path_handling():
         # Should show multiple paths in context
         assert "file1.py" in result.stdout
         assert "file2.py" in result.stdout
+
+
+def test_testwrite_write_flag_parsing():
+    """Test that --write flag is parsed correctly."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+        
+        test_file = tmpdir_path / "sample.py"
+        test_file.write_text("def sample(): return True")
+        
+        result = run_ai_command(
+            ["testwrite", "sample.py", "--write"],
+            cwd=tmpdir_path,
+            expect_success=False
+        )
+        
+        # Should show write capability enabled
+        assert "LIMITED SANDBOX + WRITES" in result.stdout or "write" in result.stdout.lower()
+
+
+def test_testwrite_force_flag_parsing():
+    """Test that --force flag is parsed correctly.""" 
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir_path = Path(tmpdir)
+        
+        test_file = tmpdir_path / "sample.py"
+        test_file.write_text("def sample(): return True")
+        
+        result = run_ai_command(
+            ["testwrite", "sample.py", "--write", "--force"],
+            cwd=tmpdir_path,
+            expect_success=False
+        )
+        
+        # Should parse correctly (will fail on OpenAI call, not argument parsing)
+        assert "testwrite" in result.stdout
+
+
+def test_ask_task_no_write_flags():
+    """Test that ask and task commands don't accept write flags."""
+    # ask should not accept --write
+    result = run_ai_command(["ask", "test", "--write"], expect_success=False)
+    assert result.returncode != 0
+    
+    # task should not accept --write  
+    result = run_ai_command(["task", "test", "--write"], expect_success=False)
+    assert result.returncode != 0

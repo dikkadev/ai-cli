@@ -11,6 +11,7 @@ from utils.render import Renderer, RunMeta, Stopwatch
 from usecases.ask import Ask, AskInput
 from usecases.task import Task, TaskInput
 from usecases.testwrite import TestWrite, TestWriteInput
+from usecases.agentic_task import AgenticTask, AgenticTaskInput
 from utils.fs import create_file_writer
 
 app = typer.Typer(
@@ -295,6 +296,205 @@ CONTEXT & SAFETY:
             raise typer.Exit(1)
 
 
+@app.command() 
+def agentic_task(
+    objective: str = typer.Argument(..., help="The task, feature, or objective you want the AI agent to plan"),
+    
+    # Agent control options
+    mode: str = typer.Option(
+        "explore+plan", 
+        help="Agent mode: 'plan' (quick planning), 'explore+plan' (thorough exploration + planning)"
+    ),
+    risk_level: str = typer.Option(
+        "moderate", 
+        help="Risk tolerance: 'conservative' (safe approach), 'moderate' (balanced), 'aggressive' (fast, higher risk)"
+    ),
+    max_iterations: int = typer.Option(
+        15,
+        help="Maximum agent iterations (5-50)",
+        min=5,
+        max=50
+    ),
+    exploration_depth: int = typer.Option(
+        3,
+        help="Directory exploration depth (1-5)",
+        min=1,
+        max=5
+    ),
+    
+    # Context inclusion options  
+    context_files: list[str] = typer.Option(
+        [], 
+        "--file", 
+        help="Specific files to prioritize during exploration (e.g., 'src/main.py', 'docs/architecture.md')"
+    ),
+    
+    # Global control options
+    model: str = ModelOption,
+    verbose: bool = VerboseOption,
+    quiet: bool = QuietOption,
+) -> None:
+    """AI agent that explores your project and creates comprehensive action plans.
+
+\b
+DESCRIPTION:
+    The 'agentic_task' command deploys an AI agent that can iteratively explore
+    your project, understand the codebase, and create detailed, context-aware
+    action plans. Unlike the regular 'task' command, this agent uses tools to
+    gather information and builds plans incrementally.
+
+\b
+EXAMPLES:
+    # Basic agentic planning
+    ai agentic_task "Add user authentication"
+    ai agentic_task "Optimize database performance" --risk-level conservative
+    ai agentic_task "Implement real-time chat" --mode explore+plan --max-iterations 20
+    
+    # Focused exploration
+    ai agentic_task "Refactor API layer" --file "src/api/main.py" --file "src/models/"
+    ai agentic_task "Add monitoring" --exploration-depth 2 --risk-level moderate
+    
+    # Quick planning mode
+    ai agentic_task "Fix login bug" --mode plan --max-iterations 5
+
+\b
+AGENT MODES:
+    • plan: Quick planning with minimal exploration (faster, less context)
+    • explore+plan: Thorough exploration followed by detailed planning (slower, more comprehensive)
+
+\b
+RISK LEVELS:
+    • conservative: Emphasizes safety, testing, gradual implementation
+    • moderate: Balanced approach with reasonable safeguards  
+    • aggressive: Fast execution, accepting higher risks for speed
+
+\b
+HOW IT WORKS:
+    1. Agent explores project structure using file system tools
+    2. Reads and analyzes key files to understand current state
+    3. Creates structured todo list with numbered, actionable items
+    4. Organizes tasks by priority and dependencies
+    5. Provides detailed reasoning and recommendations
+
+\b
+AGENT CAPABILITIES:
+    • Directory tree exploration with configurable depth
+    • File content analysis (respects security blacklist)
+    • Todo list creation and management in markdown format
+    • Iterative plan refinement based on discoveries
+    • Context-aware recommendations
+
+\b
+CONTEXT & SAFETY:
+    • Runs in FULL SANDBOX mode (read-only, no file modifications)
+    • Automatically excludes sensitive files (.env, keys, etc.)  
+    • Agent stops automatically when plan is complete
+    • All tool usage is logged and auditable
+    • Use --max-iterations to control execution time
+    """
+    console = Console()
+    renderer = Renderer(console)
+    project_root = Path.cwd()
+    
+    with Stopwatch() as sw:
+        # Render header with agent badge
+        renderer.render_header(
+            RunMeta(
+                usecase="agentic_task",
+                sandbox_badge="AGENT + FULL SANDBOX",
+                model_name=model,
+            )
+        )
+        
+        # Prepare input
+        input_data = AgenticTaskInput(
+            objective=objective,
+            mode=mode,  # type: ignore
+            risk_level=risk_level,  # type: ignore
+            exploration_depth=exploration_depth,
+            max_iterations=max_iterations,
+            context_files=context_files,
+        )
+        
+        # Show agent configuration
+        if verbose:
+            console.print(f"[dim]Agent mode: {mode}[/dim]")
+            console.print(f"[dim]Risk level: {risk_level}[/dim]")
+            console.print(f"[dim]Max iterations: {max_iterations}[/dim]")
+            console.print(f"[dim]Exploration depth: {exploration_depth}[/dim]")
+            if context_files:
+                console.print(f"[dim]Priority files: {', '.join(context_files)}[/dim]")
+        
+        # Show agent status
+        console.print("[bold blue]🤖 Starting AI Agent...[/bold blue]")
+        console.print(f"[dim]Objective: {objective}[/dim]")
+        console.print()
+        
+        # Execute
+        try:
+            provider = OpenAIProvider(model=model)
+            result = AgenticTask.execute(input_data, provider, project_root)
+            
+            if result.success:
+                # Render successful result
+                console.print(f"[bold green]✅ Agent Planning Complete[/bold green]")
+                console.print(f"[dim]Iterations used: {result.iterations_used}[/dim]")
+                console.print(f"[dim]Files explored: {len(result.files_explored)}[/dim]")
+                
+                # Show exploration summary
+                console.print(f"\n[bold]🔍 Exploration Summary:[/bold]")
+                console.print(result.exploration_summary)
+                
+                # Show the generated plan
+                console.print(f"\n[bold]📋 Generated Action Plan:[/bold]")
+                from rich.panel import Panel
+                plan_panel = Panel(
+                    result.plan, 
+                    title="Todo List",
+                    border_style="green"
+                )
+                console.print(plan_panel)
+                
+                # Show todo statistics
+                stats = result.todo_stats
+                console.print(f"\n[bold]📊 Plan Statistics:[/bold]")
+                console.print(f"  • Total tasks: {stats['total_items']}")
+                console.print(f"  • Completed: {stats['completed_items']}")
+                console.print(f"  • Pending: {stats['pending_items']}")
+                
+                # Show agent reasoning
+                console.print(f"\n[bold]🧠 Agent Analysis:[/bold]")
+                reasoning_panel = Panel(
+                    result.agent_reasoning,
+                    title="Recommendations & Reasoning",
+                    border_style="blue"
+                )
+                console.print(reasoning_panel)
+                
+                # Show explored files
+                if result.files_explored and verbose:
+                    console.print(f"\n[bold]📁 Files Analyzed:[/bold]")
+                    for file_path in result.files_explored:
+                        console.print(f"  • {file_path}")
+                
+                # Show sources
+                if result.sources:
+                    console.print(f"\n[dim]Sources: {len(result.sources)} files analyzed[/dim]")
+                
+            else:
+                # Render failure result
+                console.print(f"[bold red]❌ Agent Planning Failed[/bold red]")
+                console.print(f"[red]Error: {result.plan}[/red]")
+                console.print(f"[dim]Iterations used: {result.iterations_used}[/dim]")
+        
+        except Exception as e:
+            console.print(f"[red]Agent execution failed: {e}[/red]")
+            if verbose:
+                import traceback
+                console.print(f"[dim]{traceback.format_exc()}[/dim]")
+            raise typer.Exit(1)
+
+
 @app.command()
 def testwrite(
     target: str = typer.Argument(..., help="Target file or directory to generate comprehensive tests for"),
@@ -515,14 +715,16 @@ def main_callback(ctx: typer.Context) -> None:
         console.print("""
 [bold]Available Commands:[/bold]
 
-  [cyan]ask[/cyan]       Ask questions about code with optional project context
-  [cyan]task[/cyan]      Create structured plans for development objectives  
-  [cyan]testwrite[/cyan] Generate comprehensive test suites for your code
+  [cyan]ask[/cyan]           Ask questions about code with optional project context
+  [cyan]task[/cyan]          Create structured plans for development objectives  
+  [cyan]agentic_task[/cyan]  🤖 AI agent that explores projects and creates comprehensive plans
+  [cyan]testwrite[/cyan]     Generate comprehensive test suites for your code
 
 [bold]Quick Examples:[/bold]
 
   ai ask "How does authentication work?" --context
-  ai task "Add error handling" --risk-level conservative  
+  ai task "Add error handling" --risk-level conservative
+  ai agentic_task "Add user authentication" --mode explore+plan  
   ai testwrite src/utils.py --write --framework pytest
 
 [bold]Global Options:[/bold]

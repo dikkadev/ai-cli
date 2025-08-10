@@ -10,6 +10,7 @@ from llm.provider import Provider
 from utils.render import Renderer, RunMeta, Stopwatch
 from usecases.ask import Ask, AskInput
 from usecases.task import Task, TaskInput
+from usecases.testwrite import TestWrite, TestWriteInput
 
 app = typer.Typer(add_completion=False, help="ai CLI")
 
@@ -126,6 +127,67 @@ def task(
             raise typer.Exit(1)
 
 
+@app.command()
+def testwrite(
+    target: str = typer.Argument(..., help="Target file or directory to generate tests for"),
+    framework: str = typer.Option("pytest", help="Testing framework: pytest, unittest"),
+    placement: str = typer.Option("new_file", help="Test placement: new_file, inline"),
+    use_context: bool = typer.Option(True, "--context/--no-context", help="Include target and related files as context"),
+    context_paths: list[str] = typer.Option([], "--path", help="Additional paths to include as context"),
+) -> None:
+    """Generate test files for code (shows proposed changes only)."""
+    console = Console()
+    renderer = Renderer(console)
+    project_root = Path.cwd()
+    
+    # Note: This is LIMITED sandbox but no writes in Phase 3
+    with Stopwatch() as sw:
+        # Render header
+        renderer.render_header(
+            RunMeta(
+                usecase="testwrite",
+                sandbox_badge="LIMITED SANDBOX (NO WRITES)",
+                model_name="gpt-4o-mini",
+            )
+        )
+        
+        # Prepare input
+        input_data = TestWriteInput(
+            target=target,
+            framework=framework,  # type: ignore
+            placement=placement,  # type: ignore
+            use_context=use_context,
+            context_paths=context_paths,
+        )
+        
+        # Context summary
+        total_paths = len(context_paths) + (1 if use_context else 0)  # +1 for target
+        renderer.render_context_summary(
+            included_count=total_paths,
+            skipped_count=0,
+            redaction_on=True,
+            top_sources=[target] + context_paths[:2] if context_paths else [target],
+        )
+        
+        # Execute
+        try:
+            provider = OpenAIProvider()
+            result = TestWrite.execute(input_data, provider, project_root)
+            
+            # Render result
+            renderer.render_proposed_files(result.proposed_files, result.rationale, result.coverage_targets)
+            
+            if result.sources:
+                console.print(f"\n[dim]Sources: {len(result.sources)} files[/dim]")
+            
+            # Phase 3: No actual writes
+            console.print(f"\n[dim]Note: Files not written (use --write in Phase 4)[/dim]")
+        
+        except Exception as e:
+            console.print(f"[red]Error: {e}[/red]")
+            raise typer.Exit(1)
+
+
 @app.callback(invoke_without_command=True)
 def main(ctx: typer.Context) -> None:
     if ctx.invoked_subcommand is None:
@@ -138,7 +200,7 @@ def main(ctx: typer.Context) -> None:
                 model_name=None,
             )
         )
-        console.print("Available commands: ask, task")
+        console.print("Available commands: ask, task, testwrite")
 
 
 if __name__ == "__main__":

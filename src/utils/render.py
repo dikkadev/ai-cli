@@ -91,6 +91,41 @@ class Renderer:
             for action in next_actions:
                 self.console.print(f"  • {action}")
 
+    def render_proposed_files(self, proposed_files: list, rationale: str, coverage_targets: list[str]) -> None:
+        """Render proposed file changes with diffs."""
+        # Overall rationale
+        if rationale:
+            self.console.print(f"\n[bold cyan]Approach:[/bold cyan]")
+            self.console.print(f"  {rationale}")
+        
+        # Coverage targets
+        if coverage_targets:
+            self.console.print(f"\n[bold green]Coverage Targets:[/bold green]")
+            for target in coverage_targets:
+                self.console.print(f"  • {target}")
+        
+        # Proposed files
+        if proposed_files:
+            self.console.print(f"\n[bold yellow]Proposed Changes:[/bold yellow]")
+            for i, file in enumerate(proposed_files, 1):
+                action_color = {"create": "green", "update": "yellow", "delete": "red"}.get(file.action, "white")
+                action_badge = f"[{action_color}]{file.action.upper()}[/{action_color}]"
+                
+                self.console.print(f"\n{i}. [bold]{file.path}[/bold] {action_badge}")
+                self.console.print(f"   [dim]{file.rationale}[/dim]")
+                
+                # Show truncated content preview for create/update
+                if file.action in ("create", "update") and hasattr(file, 'content'):
+                    lines = file.content.split('\n')
+                    preview_lines = lines[:10]  # First 10 lines
+                    
+                    self.console.print(f"   [dim]Preview ({len(lines)} lines):[/dim]")
+                    for line in preview_lines:
+                        self.console.print(f"   [dim]  {line}[/dim]")
+                    
+                    if len(lines) > 10:
+                        self.console.print(f"   [dim]  ... ({len(lines) - 10} more lines)[/dim]")
+
 
 class Stopwatch:
     def __enter__(self):

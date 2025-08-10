@@ -27,9 +27,9 @@ def test_cli_help():
     result = run_ai_command([])
     assert result.returncode == 0
     assert "Available Commands:" in result.stdout
-    assert "ask       Ask questions about code" in result.stdout
-    assert "task      Create structured plans" in result.stdout
-    assert "testwrite Generate comprehensive test suites" in result.stdout
+    assert "ask           Ask questions about code with optional project context" in result.stdout
+    assert "task          Create structured plans for development objectives" in result.stdout
+    assert "testwrite     Generate comprehensive test suites for your code" in result.stdout
 
 
 def test_ask_command_help():

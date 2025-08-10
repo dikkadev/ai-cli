@@ -61,7 +61,16 @@ def collect_paths(
             continue
 
         for p in candidates:
-            if blacklist.is_blocked(p):
+            # Check against blacklist using relative path from the root
+            try:
+                if root.is_dir():
+                    rel_path = p.relative_to(root)
+                else:
+                    rel_path = p.relative_to(root.parent)
+            except ValueError:
+                rel_path = p
+                
+            if blacklist.is_blocked(rel_path):
                 skipped.append(p)
                 continue
             if looks_binary(p):
@@ -78,9 +87,10 @@ def collect_paths(
             if total + size > caps.max_total_bytes:
                 skipped.append(p)
                 continue
+            if len(included) >= caps.max_files:
+                skipped.append(p)
+                continue
             included.append(p)
             total += size
-            if len(included) >= caps.max_files:
-                break
 
     return IngestResult(included=included, skipped=skipped, total_bytes=total)

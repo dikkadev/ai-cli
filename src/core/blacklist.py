@@ -44,8 +44,12 @@ class Blacklist:
 
     @staticmethod
     def _match(candidate: str, pattern: str) -> bool:
-        # Support directory suffix slash semantics; fnmatch works on strings
-        if candidate.endswith("/") or pattern.endswith("/"):
-            candidate = candidate.rstrip("/") + "/"
-            pattern = pattern.rstrip("/") + "/"
+        # Handle directory patterns with trailing slashes
+        if pattern.endswith("/"):
+            # For directory patterns, match if candidate starts with the directory name
+            pattern_prefix = pattern.rstrip("/")
+            return (candidate == pattern_prefix or 
+                    candidate.startswith(pattern_prefix + "/"))
+        
+        # Regular fnmatch for file patterns
         return fnmatch(candidate, pattern)

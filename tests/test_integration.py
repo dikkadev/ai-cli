@@ -26,14 +26,17 @@ def test_cli_help():
     """Test that the main CLI shows help and available commands."""
     result = run_ai_command([])
     assert result.returncode == 0
-    assert "Available commands: ask, task, testwrite" in result.stdout
+    assert "Available Commands:" in result.stdout
+    assert "ask       Ask questions about code" in result.stdout
+    assert "task      Create structured plans" in result.stdout
+    assert "testwrite Generate comprehensive test suites" in result.stdout
 
 
 def test_ask_command_help():
     """Test ask command help."""
     result = run_ai_command(["ask", "--help"])
     assert result.returncode == 0
-    assert "Ask a question with optional local context" in result.stdout
+    assert "Ask questions about your code with AI assistance" in result.stdout
     assert "--context" in result.stdout
     assert "--path" in result.stdout
 
@@ -42,7 +45,7 @@ def test_task_command_help():
     """Test task command help."""
     result = run_ai_command(["task", "--help"])
     assert result.returncode == 0
-    assert "Create a structured plan for a task" in result.stdout
+    assert "Create structured, actionable plans for development tasks" in result.stdout
     assert "--risk-level" in result.stdout
     assert "--mode" in result.stdout
 
@@ -51,7 +54,7 @@ def test_testwrite_command_help():
     """Test testwrite command help."""
     result = run_ai_command(["testwrite", "--help"])
     assert result.returncode == 0
-    assert "Generate test files for code" in result.stdout
+    assert "Generate comprehensive test suites for your code" in result.stdout
     assert "--framework" in result.stdout
     assert "--placement" in result.stdout
 

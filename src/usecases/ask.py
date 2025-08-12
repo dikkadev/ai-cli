@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Callable
 
 from pydantic import BaseModel, Field
 
@@ -53,7 +53,7 @@ class Ask:
     OutputModel = AskOutput
 
     @staticmethod
-    def execute(input_data: AskInput, provider, project_root: Path) -> AskOutput:
+    def execute(input_data: AskInput, provider, project_root: Path, progress_callback: Callable[[str], None] | None = None) -> AskOutput:
         context_text = ""
         sources = []
         
@@ -108,7 +108,14 @@ class Ask:
         prompt = "\n".join(prompt_parts)
 
         # Get response from provider
-        response = provider.generate_structured(prompt=prompt, response_model=AskOutput)
+        if hasattr(provider, 'generate_structured_streaming'):
+            response = provider.generate_structured_streaming(
+                prompt=prompt, 
+                response_model=AskOutput, 
+                progress_callback=progress_callback
+            )
+        else:
+            response = provider.generate_structured(prompt=prompt, response_model=AskOutput)
         
         # Merge sources from context
         response.output.sources = sources

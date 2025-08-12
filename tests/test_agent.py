@@ -391,3 +391,4 @@ class TestAgentResult:
         summary = result.get_summary()
         assert "Failed after 2 iterations" in summary
         assert "Something went wrong" in summary
+

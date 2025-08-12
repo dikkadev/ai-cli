@@ -1,7 +1,13 @@
 from __future__ import annotations
 
-import typer
+import sys
 from pathlib import Path
+
+# Add src directory to Python path for imports
+src_path = Path(__file__).parent / "src"
+sys.path.insert(0, str(src_path))
+
+import typer
 from rich.console import Console
 
 from core.sandbox import SandboxMode, SandboxPolicy, SandboxGuard
@@ -16,8 +22,7 @@ from utils.fs import create_file_writer
 
 app = typer.Typer(
     add_completion=False,
-    help="""
-AI CLI - Intelligent development assistance tool.
+    help="""AI CLI - Intelligent development assistance tool.
 
 Provides AI-powered help for common development tasks with built-in safety controls.
 All operations are sandboxed and require explicit consent for file modifications.
@@ -28,22 +33,21 @@ Examples:
   ai testwrite src/utils.py --write --framework pytest
 
 Safety: Operations are restricted to the current project directory. File writes
-require both use case capability AND explicit --write consent.
-""".strip()
+require both use case capability AND explicit --write consent."""
 )
 
 # Global options for context and behavior control
-ModelOption = typer.Option("gpt-4o-mini", "--model", help="AI model to use (gpt-4o-mini, gpt-4o, gpt-4-turbo)")
-MaxFilesOption = typer.Option(50, "--max-files", help="Maximum number of context files to include (1-500)")
-MaxBytesOption = typer.Option(2048, "--max-bytes", help="Maximum total context size in KB (1-10000)")
-BlacklistIgnoreOption = typer.Option([], "--blacklist-ignore", help="Ignore specific blacklist patterns (e.g., '*.env', 'secrets/')")
-RedactionOption = typer.Option(True, "--redaction/--no-redaction", help="Enable/disable automatic redaction of sensitive content")
-VerboseOption = typer.Option(False, "--verbose", "-v", help="Show detailed execution information")
+ModelOption = typer.Option("gpt-5-mini", "--model", help="AI model to use (gpt-5-nano, gpt-5-mini, gpt-5)")
+MaxFilesOption = typer.Option(50, "--max-files", help="Maximum context files (1-500)")
+MaxBytesOption = typer.Option(2048, "--max-bytes", help="Max context size in KB (1-10000)")
+BlacklistIgnoreOption = typer.Option([], "--blacklist-ignore", help="Ignore blacklist patterns")
+RedactionOption = typer.Option(True, "--redaction/--no-redaction", help="Auto-redact sensitive content")
+VerboseOption = typer.Option(False, "--verbose", "-v", help="Show detailed execution info")
 QuietOption = typer.Option(False, "--quiet", "-q", help="Suppress non-essential output")
 
 # Write control options (only for applicable commands)
-WriteOption = typer.Option(False, "--write", help="Enable file modifications (requires use case capability + user consent)")
-ForceOption = typer.Option(False, "--force", help="Skip interactive confirmation prompts (use with caution)")
+WriteOption = typer.Option(False, "--write", help="Enable file modifications")
+ForceOption = typer.Option(False, "--force", help="Skip confirmation prompts")
 
 
 @app.command()
@@ -53,19 +57,19 @@ def ask(
     # Content style options
     style: str = typer.Option(
         "plain", 
-        help="Answer format: 'plain' (paragraph), 'summary' (concise), 'bullets' (bullet points)"
+        help="Answer format: plain, summary, or bullets"
     ),
     
     # Context inclusion options
     use_context: bool = typer.Option(
         False, 
         "--context", 
-        help="Include project files as context (uses default patterns: README.md, *.md)"
+        help="Include project files as context"
     ),
     context_paths: list[str] = typer.Option(
         [], 
         "--path", 
-        help="Specific files/globs to include as context (e.g., 'src/*.py', 'docs/api.md')"
+        help="Specific files/globs to include as context"
     ),
     
     # Global context control options
@@ -148,10 +152,15 @@ CONTEXT & SAFETY:
             top_sources=context_paths[:3] if context_paths else None,
         )
         
-        # Execute
+        # Execute with progress indicator
         try:
-            provider = OpenAIProvider()
-            result = Ask.execute(input_data, provider, project_root)
+            provider = OpenAIProvider(model=model)
+            
+            # Create progress callback for live updates
+            def progress_callback(message: str):
+                console.print(f"[dim]{message}[/dim]")
+            
+            result = Ask.execute(input_data, provider, project_root, progress_callback)
             
             # Render result
             renderer.render_text_block(result.answer)
@@ -280,10 +289,15 @@ CONTEXT & SAFETY:
             top_sources=context_paths[:3] if context_paths else None,
         )
         
-        # Execute
+        # Execute with progress indicator
         try:
-            provider = OpenAIProvider()
-            result = Task.execute(input_data, provider, project_root)
+            provider = OpenAIProvider(model=model)
+            
+            # Create progress callback for live updates
+            def progress_callback(message: str):
+                console.print(f"[dim]{message}[/dim]")
+            
+            result = Task.execute(input_data, provider, project_root, progress_callback)
             
             # Render result
             renderer.render_plan(result.plan, result.risks, result.assumptions, result.next_actions)

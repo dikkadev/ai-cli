@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Callable
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +47,7 @@ class Task:
     OutputModel = TaskOutput
 
     @staticmethod
-    def execute(input_data: TaskInput, provider, project_root: Path) -> TaskOutput:
+    def execute(input_data: TaskInput, provider, project_root: Path, progress_callback: Callable[[str], None] | None = None) -> TaskOutput:
         context_text = ""
         sources = []
         
@@ -116,7 +116,14 @@ class Task:
         prompt = "\n".join(prompt_parts)
 
         # Get response from provider
-        response = provider.generate_structured(prompt=prompt, response_model=TaskOutput)
+        if hasattr(provider, 'generate_structured_streaming'):
+            response = provider.generate_structured_streaming(
+                prompt=prompt, 
+                response_model=TaskOutput, 
+                progress_callback=progress_callback
+            )
+        else:
+            response = provider.generate_structured(prompt=prompt, response_model=TaskOutput)
         
         # Merge sources from context
         response.output.sources = sources
